@@ -25,7 +25,7 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: creydr
           password: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Checkout Kubernetes
@@ -36,9 +36,6 @@ jobs:
         id: latest-version
         run: echo "PATCH_VERSION=$(git describe --tags --abbrev=0)" >> "$GITHUB_OUTPUT"
 
-      - name: Print latest patch version
-        run: echo "Latest patch version of ${{ matrix.k8s-version }} is ${{ steps.latest-version.outputs.PATCH_VERSION }}""
-
       - name: Install KinD
         shell: bash
         run: |
@@ -46,6 +43,12 @@ jobs:
           chmod +x ./kind
           sudo mv kind /usr/local/bin
 
-      - name: KinD version
+      - name: Build KinD node image
         shell: bash
-        run: kind version
+        run: |
+          kind build node-image . --image ghcr.io/creydr/kind-node-image:${{ steps.latest-version.outputs.PATCH_VERSION }}
+
+      - name: Push KinD node image
+        shell: bash
+        run: |
+          docker push ghcr.io/creydr/kind-node-image:${{ steps.latest-version.outputs.PATCH_VERSION }}

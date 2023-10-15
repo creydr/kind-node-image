@@ -17,6 +17,7 @@ jobs:
         k8s-version: 
         - "1.26"
         - "1.27"
+        - "1.28"
     timeout-minutes: 60
     env:
       KIND_VERSION: v0.20.0

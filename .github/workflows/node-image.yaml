@@ -70,3 +70,10 @@ jobs:
         shell: bash
         run: |
           docker push ghcr.io/creydr/kind-node-image:${{ steps.latest-version.outputs.PATCH_VERSION }}
+
+      - name: Push KinD latest node image
+        if: steps.image-check.outputs.image-exists != 'true'
+        shell: bash
+        run: |
+          docker image tag ghcr.io/creydr/kind-node-image:${{ steps.latest-version.outputs.PATCH_VERSION }} ghcr.io/creydr/kind-node-image:${{ matrix.k8s-version }}
+          docker push ghcr.io/creydr/kind-node-image:${{ matrix.k8s-version }}

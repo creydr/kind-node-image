@@ -39,7 +39,20 @@ jobs:
         id: latest-version
         run: echo "PATCH_VERSION=$(git describe --tags --abbrev=0)" >> "$GITHUB_OUTPUT"
 
+      - name: Check if node image exists already
+        id: image-check
+        run: |
+          TOKEN_B64=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
+          if curl --silent --fail -o /dev/null -H "Authorization: Bearer ${TOKEN_B64}" https://ghcr.io/v2/creydr/kind-node-image/manifests/${{ steps.latest-version.outputs.PATCH_VERSION }}; then
+            echo "Image with ${{ steps.latest-version.outputs.PATCH_VERSION }} tag exists already"
+            echo "image-exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Image with ${{ steps.latest-version.outputs.PATCH_VERSION }} tag does not exist yet"
+            echo "image-exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install KinD
+        if: steps.image-check.outputs.image-exists != 'true'
         shell: bash
         run: |
           curl -Lo ./kind "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VERSION }}/kind-$(uname)-amd64"
@@ -47,11 +60,13 @@ jobs:
           sudo mv kind /usr/local/bin
 
       - name: Build KinD node image
+        if: steps.image-check.outputs.image-exists != 'true'
         shell: bash
         run: |
           kind build node-image . --image ghcr.io/creydr/kind-node-image:${{ steps.latest-version.outputs.PATCH_VERSION }}
 
       - name: Push KinD node image
+        if: steps.image-check.outputs.image-exists != 'true'
         shell: bash
         run: |
           docker push ghcr.io/creydr/kind-node-image:${{ steps.latest-version.outputs.PATCH_VERSION }}

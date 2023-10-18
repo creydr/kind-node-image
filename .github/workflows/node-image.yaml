@@ -18,6 +18,16 @@ jobs:
         - "1.26"
         - "1.27"
         - "1.28"
+        arch:
+        - amd64
+        - arm64
+
+        include:
+        - arch: amd64
+          image-name: "creydr/kind-node-image"
+        - arch: arm64
+          image-name: "creydr/kind-node-image-arm64"
+    
     timeout-minutes: 60
     env:
       KIND_VERSION: v0.20.0
@@ -30,6 +40,9 @@ jobs:
           registry: ghcr.io
           username: creydr
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
       
       - name: Checkout Kubernetes
         run: |
@@ -43,7 +56,7 @@ jobs:
         id: image-check
         run: |
           TOKEN_B64=$(echo ${{ secrets.GITHUB_TOKEN }} | base64)
-          if curl --silent --fail -o /dev/null -H "Authorization: Bearer ${TOKEN_B64}" https://ghcr.io/v2/creydr/kind-node-image/manifests/${{ steps.latest-version.outputs.PATCH_VERSION }}; then
+          if curl --silent --fail -o /dev/null -H "Authorization: Bearer ${TOKEN_B64}" https://ghcr.io/v2/${{ matrix.image-name }}/manifests/${{ steps.latest-version.outputs.PATCH_VERSION }}; then
             echo "Image with ${{ steps.latest-version.outputs.PATCH_VERSION }} tag exists already"
             echo "image-exists=true" >> "$GITHUB_OUTPUT"
           else
@@ -63,17 +76,17 @@ jobs:
         if: steps.image-check.outputs.image-exists != 'true'
         shell: bash
         run: |
-          kind build node-image . --image ghcr.io/creydr/kind-node-image:${{ steps.latest-version.outputs.PATCH_VERSION }}
+          kind build node-image . --image ghcr.io/${{ matrix.image-name }}:${{ steps.latest-version.outputs.PATCH_VERSION }} --arch ${{ matrix.arch }}
 
       - name: Push KinD node image
         if: steps.image-check.outputs.image-exists != 'true'
         shell: bash
         run: |
-          docker push ghcr.io/creydr/kind-node-image:${{ steps.latest-version.outputs.PATCH_VERSION }}
+          docker push ghcr.io/${{ matrix.image-name }}:${{ steps.latest-version.outputs.PATCH_VERSION }}
 
       - name: Push KinD latest node image
         if: steps.image-check.outputs.image-exists != 'true'
         shell: bash
         run: |
-          docker image tag ghcr.io/creydr/kind-node-image:${{ steps.latest-version.outputs.PATCH_VERSION }} ghcr.io/creydr/kind-node-image:${{ matrix.k8s-version }}
-          docker push ghcr.io/creydr/kind-node-image:${{ matrix.k8s-version }}
+          docker image tag ghcr.io/${{ matrix.image-name }}:${{ steps.latest-version.outputs.PATCH_VERSION }} ghcr.io/${{ matrix.image-name }}:${{ matrix.k8s-version }}
+          docker push ghcr.io/${{ matrix.image-name }}:${{ matrix.k8s-version }}

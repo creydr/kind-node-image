@@ -29,8 +29,6 @@ jobs:
           image-name: "creydr/kind-node-image-arm64"
     
     timeout-minutes: 60
-    env:
-      KIND_VERSION: v0.20.0
     permissions:
       packages: write
     steps:
@@ -66,11 +64,10 @@ jobs:
 
       - name: Install KinD
         if: steps.image-check.outputs.image-exists != 'true'
-        shell: bash
-        run: |
-          curl -Lo ./kind "https://github.com/kubernetes-sigs/kind/releases/download/${{ env.KIND_VERSION }}/kind-$(uname)-amd64"
-          chmod +x ./kind
-          sudo mv kind /usr/local/bin
+        uses: helm/kind-action@v1.8.0
+        with:
+          install_only: true
+          version: v0.20.0
 
       - name: Build KinD node image
         if: steps.image-check.outputs.image-exists != 'true'
